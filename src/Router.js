@@ -120,26 +120,26 @@ export default class Router {
       if (this.__dispatchId !== ctx.dispatchId) {
         return;
       }
-      let handlerFnOrArray = handlers[index]
-      index++
+      let handlerFnOrArray = handlers[index];
+      index++;
       // capture handler index in closure since index could be modified by another thread
       const handlerIndex = index;
 
       if (handlerFnOrArray) {
         if (Array.isArray(handlerFnOrArray)) {
-          let parallelHandlersComplete = 0
+          let parallelHandlersComplete = 0;
 
           // for parallel handlers we use a custom next callback that tracks completion of all handlers in the group
           const parallelNext = () => {
-            parallelHandlersComplete++
+            parallelHandlersComplete++;
             if (parallelHandlersComplete === handlerFnOrArray.length) {
-              next()
+              next(); // all grouped parallel handlers complete, so invoke the next top-level handler or handler array
             }
           }
           // execute all handlers in parallel group
-          handlerFnOrArray.map(handlerFn => handlerFn(ctx, parallelNext))
+          handlerFnOrArray.map(handlerFn => handlerFn(ctx, parallelNext));
         } else {
-          handlerFnOrArray(ctx, next)
+          handlerFnOrArray(ctx, next);
           if (callback && handlerIndex === handlers.length && this.__dispatchId === ctx.dispatchId) {
             callback();
           }
@@ -147,7 +147,7 @@ export default class Router {
       }
     }
 
-    next()
+    next();
   }
 
   /**
