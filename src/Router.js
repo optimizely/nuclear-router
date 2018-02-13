@@ -114,21 +114,35 @@ export default class Router {
    * @param {Context} ctx
    */
   __runHandlers(handlers, ctx, callback) {
-    let i = 0;
+    let index = 0;
 
     let next = () => {
       if (this.__dispatchId !== ctx.dispatchId) {
         return;
       }
-      let fn = handlers[i]
-      i++
-      // capture i in closure to not fuck
-      var j = i;
+      let handlerFnOrArray = handlers[index]
+      index++
+      // capture handler index in closure since index could be modified by another thread
+      const handlerIndex = index;
 
-      if (fn) {
-        fn(ctx, next)
-        if (callback && j === handlers.length && this.__dispatchId === ctx.dispatchId) {
-          callback();
+      if (handlerFnOrArray) {
+        if (Array.isArray(handlerFnOrArray)) {
+          let parallelHandlersComplete = 0
+
+          // for parallel handlers we use a custom next callback that tracks completion of all handlers in the group
+          const parallelNext = () => {
+            parallelHandlersComplete++
+            if (parallelHandlersComplete === handlerFnOrArray.length) {
+              next()
+            }
+          }
+          // execute all handlers in parallel group
+          handlerFnOrArray.map(handlerFn => handlerFn(ctx, parallelNext))
+        } else {
+          handlerFnOrArray(ctx, next)
+          if (callback && handlerIndex === handlers.length && this.__dispatchId === ctx.dispatchId) {
+            callback();
+          }
         }
       }
     }

@@ -37,8 +37,10 @@ describe('Router', () => {
 
   describe('navigation', () => {
     let router
-    let spy1, spy2, spy3, asyncSpy0, asyncSpy1, asyncSpy2, onRouteStartSpy, onRouteCompleteSpy, redirectSpy1, redirectSpy2
-    let deferred
+    let spy1, spy2, spy3
+    let asyncSpy0, asyncSpy1, asyncSpy2, asyncSpy3
+    let onRouteStartSpy, onRouteCompleteSpy, redirectSpy1, redirectSpy2
+    let deferred, deferred2
 
     beforeEach(() => {
       onRouteStartSpy = sinon.spy()
@@ -58,6 +60,7 @@ describe('Router', () => {
       asyncSpy0 = sinon.spy()
       asyncSpy1 = sinon.spy()
       asyncSpy2 = sinon.spy()
+      asyncSpy3 = sinon.spy()
 
       redirectSpy1 = sinon.spy()
       redirectSpy2 = sinon.spy()
@@ -65,6 +68,11 @@ describe('Router', () => {
       let asyncPromise = new Promise((resolve, reject) => {
         deferred = { resolve, reject }
       })
+      deferred.promise = asyncPromise
+      let asyncPromise2 = new Promise((resolve, reject) => {
+        deferred2 = { resolve, reject }
+      })
+      deferred2.promise = asyncPromise2
 
       router.registerRoutes([
         {
@@ -110,6 +118,33 @@ describe('Router', () => {
             (ctx, next) => {
               asyncSpy2()
               next()
+            },
+          ],
+        },
+        {
+          match: '/async-parallel',
+          handle: [
+            [
+              (ctx, next) => {
+                asyncPromise.then(() => {
+                  asyncSpy0();
+                  next();
+                });
+              },
+              (ctx, next) => {
+                asyncPromise2.then(() => {
+                  asyncSpy1();
+                  next();
+                });
+              },
+              (ctx, next) => {
+                asyncSpy2();
+                next();
+              },
+            ],
+            (ctx, next) => {
+              asyncSpy3();
+              next();
             },
           ],
         },
@@ -172,7 +207,7 @@ describe('Router', () => {
       expect(ctx.path).toBe('/bar/123/baz')
     })
 
-    it('should be to block on async handlers', (done) => {
+    it('should block on async handlers', (done) => {
       router.go('/async')
 
       sinon.assert.calledOnce(asyncSpy0)
@@ -181,11 +216,34 @@ describe('Router', () => {
 
       deferred.resolve()
 
-      setTimeout(function() {
+      deferred.promise.then(() => {
         sinon.assert.calledOnce(asyncSpy1)
         sinon.assert.calledOnce(asyncSpy2)
         done()
-      }, 0);
+      })
+    })
+
+    it('should block on completion of grouped parallel executing async handlers', (done) => {
+      router.go('/async-parallel')
+
+      sinon.assert.calledOnce(asyncSpy2)
+      sinon.assert.notCalled(asyncSpy0)
+      sinon.assert.notCalled(asyncSpy1)
+      sinon.assert.notCalled(asyncSpy3)
+
+      deferred.resolve()
+      deferred.promise.then(() => {
+        sinon.assert.calledOnce(asyncSpy0)
+        sinon.assert.notCalled(asyncSpy1)
+        sinon.assert.notCalled(asyncSpy3)
+  
+        deferred2.resolve()
+        deferred2.promise.then(() => {
+          sinon.assert.calledOnce(asyncSpy1)
+          sinon.assert.calledOnce(asyncSpy3)
+          done()
+        })
+      })
     })
 
     it('should call onRouteComplete at the end of each route', () => {
