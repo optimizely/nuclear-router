@@ -108,6 +108,61 @@ export default class Router {
     WindowEnv.navigate(this.__catchallPath)
   }
 
+  /**
+   * Execute a single route, which consists of:
+   *   - Updating the url via pushstate/replacestate (if specified)
+   *   - Running the routes handlers
+   *   - Invoking the onstart and oncomplete handlers (if specified)
+   * @param path
+   * @param canonicalPath
+   * @param mode
+   * @param route
+   * @param params
+   * @private
+   */
+  __executeRoute(path, canonicalPath, mode, {route, params}) {
+    const title = DocumentEnv.getTitle()
+    const ctx = new Context({ canonicalPath, path, title, params, dispatchId: this.__dispatchId })
+    if (mode === 'replace') {
+      HistoryEnv.replaceState.apply(null, ctx.getHistoryArgs())
+    } else if (mode === 'push') {
+      HistoryEnv.pushState.apply(null, ctx.getHistoryArgs())
+    }
+
+    this.__currentCanonicalPath = canonicalPath
+    const routeMetadata = route.metadata || {};
+
+    if (this.onRouteStart && mode !== 'replace') {
+      this.onRouteStart({
+        routeMetadata,
+        fromPath: this.__fromPath || 'PAGE LOAD',
+        startTime: this.__startTime,
+        context: ctx,
+      });
+    }
+
+    this.__runHandlers(route.handlers, ctx, () => {
+      const startTime = this.__startTime;
+      const endTime = fns.getNow();
+      const duration = endTime - startTime;
+      const fromPath = this.__fromPath || 'PAGE LOAD';
+      const toPath = canonicalPath;
+
+      if (this.onRouteComplete) {
+        this.onRouteComplete({
+          fromPath,
+          toPath,
+          duration,
+          startTime,
+          endTime,
+          routeMetadata,
+        });
+      }
+
+      this.__fromPath = canonicalPath;
+    })
+  };
+
 
   /**
    * @param {RouterHandler[]} handlers
@@ -160,54 +215,14 @@ export default class Router {
       this.__startTime = fns.getNow();
     }
 
-    let title = DocumentEnv.getTitle()
     let path = fns.extractPath(this.opts.base, canonicalPath)
-    let { params, route } = fns.matchRoute(this.__routes, path)
+    let matches = fns.matchRoute(this.__routes, path)
 
-    let ctx = new Context({ canonicalPath, path, title, params, dispatchId: this.__dispatchId })
-
-    if (route) {
-      if (mode === 'replace') {
-        HistoryEnv.replaceState.apply(null, ctx.getHistoryArgs())
-      } else if (mode === 'push') {
-        HistoryEnv.pushState.apply(null, ctx.getHistoryArgs())
-      }
-
-      this.__currentCanonicalPath = canonicalPath
-      const routeMetadata = route.metadata || {};
-
-      if (this.onRouteStart && mode !== 'replace') {
-        this.onRouteStart({
-          routeMetadata,
-          fromPath: this.__fromPath || 'PAGE LOAD',
-          startTime: this.__startTime,
-          context: ctx,
-        });
-      }
-
-      this.__runHandlers(route.handlers, ctx, () => {
-        const startTime = this.__startTime;
-        const endTime = fns.getNow();
-        const duration = endTime - startTime;
-        const fromPath = this.__fromPath || 'PAGE LOAD';
-        const toPath = canonicalPath;
-
-        if (this.onRouteComplete) {
-          this.onRouteComplete({
-            fromPath,
-            toPath,
-            duration,
-            startTime,
-            endTime,
-            routeMetadata,
-          });
-        }
-
-        this.__fromPath = canonicalPath;
-      })
-    } else {
-      this.catchall()
-    }
+    fns.filterMatches(matches)
+      .then(
+        match => this.__executeRoute(path, canonicalPath, mode, match),
+        this.catchall
+      )
   }
 
   __onpopstate(e) {

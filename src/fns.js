@@ -1,3 +1,5 @@
+import utils from './utils';
+
 /**
  * @param {String} path
  * @return {String}
@@ -40,15 +42,16 @@ function extractPath(base, canonicalPath) {
 }
 
 /**
+ * Given a list of routes, return a list of all matches
+ * based on the route's match key.
+ * Ensure they are returned in the same order they appear
+ * in the original routes list.
  * @param {Route[]} routes
  * @param {String} path
- * @return {{ route: Route, params: Object }}
+ * @return {{ route: Route, params: Object }[]}
  */
 function matchRoute(routes, path) {
-  let result = {
-    params: {},
-    route: null,
-  }
+  const results = [];
 
   let decodedPath = decodeURIComponent(path)
   for (let i = 0; i < routes.length; i++) {
@@ -66,12 +69,38 @@ function matchRoute(routes, path) {
         }
       }
 
-      result = { route, params }
-      break
+      results.push({ route, params });
     }
   }
 
-  return result
+  return results
+}
+
+/**
+ * Given a list of matching routes, return a promise which resolves
+ * with the first route in the list that has indicated it should handle
+ * based on its shouldHandle key.
+ * @param routes
+ * @returns {Promise}
+ */
+function filterMatches(routes) {
+  return new Promise((res, rej) => {
+    if (routes.length === 0) {
+      rej('No routes match');
+    } else if (routes.length === 1) {
+      res(routes[0]);
+    } else {
+      utils.PromiseOrderedFirst(
+        routes.map(r => {
+          if (r.route.shouldHandle) {
+            return r.route.shouldHandle();
+          }
+          // The absence of route.shouldHandle is considered a match.
+          return Promise.resolve();
+        })
+      ).then(({index}) => res(routes[index]));
+    }
+  });
 }
 
 /**
@@ -100,6 +129,7 @@ export default {
   extractQueryString,
   extractQueryParams,
   extractPath,
+  filterMatches,
   matchRoute,
   getNow,
 }
