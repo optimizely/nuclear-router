@@ -80,15 +80,13 @@ function matchRoute(routes, path) {
  * Given a list of matching routes, return a promise which resolves
  * with the first route in the list that has indicated it should handle
  * based on its shouldHandle key.
- * @param routes
+ * @param {Object[]} routes
  * @returns {Promise}
  */
 function filterMatches(routes) {
   return new Promise((res, rej) => {
     if (routes.length === 0) {
       rej('No routes match');
-    } else if (routes.length === 1) {
-      res(routes[0]);
     } else {
       utils.PromiseOrderedFirst(
         routes.map(r => {
@@ -98,7 +96,10 @@ function filterMatches(routes) {
           // The absence of route.shouldHandle is considered a match.
           return Promise.resolve();
         })
-      ).then(({index}) => res(routes[index]));
+      ).then(
+        ({index}) => res(routes[index]),
+        rej
+      );
     }
   });
 }

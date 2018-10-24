@@ -26,7 +26,7 @@
  *   //   [<resolves in 2s>, <resolves in 1s>, <resolved>]
  *   // => Resolves with #1 after 2s
  *
- * @param {Array} promiseList
+ * @param {Promise[]} promiseList
  * @returns {Promise}
  */
 export const PromiseOrderedFirst = function(promiseList) {

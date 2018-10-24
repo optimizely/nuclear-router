@@ -87,6 +87,7 @@ describe('Router', () => {
       })
       deferred2.promise = asyncPromise2
 
+      router.registerCatchallPath('/404');
       router.registerRoutes([
         {
           match: '/foo',
@@ -182,9 +183,93 @@ describe('Router', () => {
     })
 
     afterEach(() => {
-      router.reset()
-      WindowEnv.navigate.restore()
-    })
+      router.reset();
+      WindowEnv.navigate.restore();
+    });
+
+    describe('when no route matches', function() {
+      it('should execute the catchall route', () => {
+        router.go('/abcdefg');
+
+        return getMacroTaskResolvedPromise()
+          .then(() => {
+            sinon.assert.calledOnce(WindowEnv.navigate);
+            sinon.assert.calledWithExactly(WindowEnv.navigate, '/404');
+          })
+      });
+    });
+
+    describe('when a single route matches', function() {
+      let handlerSpy1;
+      let shouldHandleSpy1;
+
+      beforeEach(function () {
+        handlerSpy1 = sinon.spy();
+        shouldHandleSpy1 = sinon.spy();
+      });
+
+      describe('when shouldHandle resolves', function() {
+        beforeEach(function() {
+          router.registerRoutes([
+            {
+              match: '/the_route',
+              shouldHandle: () => {
+                shouldHandleSpy1();
+                return Promise.resolve();
+              },
+              handle: [
+                (ctx, next) => {
+                  handlerSpy1(ctx);
+                  next()
+                },
+              ],
+            },
+          ]);
+        });
+
+        it('should execute the route', () => {
+          router.go('/the_route');
+
+          return getMacroTaskResolvedPromise()
+            .then(() => {
+              sinon.assert.calledOnce(handlerSpy1)
+              sinon.assert.calledOnce(shouldHandleSpy1)
+            })
+        });
+      });
+
+      describe('when shouldHandle rejects', function() {
+        beforeEach(function() {
+          router.registerRoutes([
+            {
+              match: '/the_route',
+              shouldHandle: () => {
+                shouldHandleSpy1();
+                return Promise.reject();
+              },
+              handle: [
+                (ctx, next) => {
+                  handlerSpy1(ctx);
+                  next()
+                },
+              ],
+            },
+          ]);
+        });
+
+        it('should execute the catchall instead of the route', () => {
+          router.go('/the_route');
+
+          return getMacroTaskResolvedPromise()
+            .then(() => {
+              sinon.assert.notCalled(handlerSpy1)
+              sinon.assert.calledOnce(shouldHandleSpy1)
+              sinon.assert.calledOnce(WindowEnv.navigate);
+              sinon.assert.calledWithExactly(WindowEnv.navigate, '/404');
+            })
+        });
+      });
+    });
 
     describe('when multiple routes match', function() {
       let handlerSpy1;
@@ -260,7 +345,7 @@ describe('Router', () => {
           ]);
         });
 
-        it('should execute the first route in the list', () => {
+        it('should execute the second route in the list', () => {
           router.go('/shared_route')
 
           return getMacroTaskResolvedPromise()
@@ -369,7 +454,6 @@ describe('Router', () => {
           );
         });
       })
-
     });
 
     it('should register routes and respond to Router#go', () => {
@@ -380,7 +464,7 @@ describe('Router', () => {
         sinon.assert.calledOnce(spy2)
         sinon.assert.notCalled(spy3)
 
-        var ctx = spy1.firstCall.args[0]
+        const ctx = spy1.firstCall.args[0]
 
         expect(ctx.title).toBe(pageTitle)
         expect(ctx.params).toEqual({})
@@ -395,7 +479,7 @@ describe('Router', () => {
       return getMacroTaskResolvedPromise().then(() => {
         sinon.assert.calledOnce(spy3)
 
-        var ctx = spy3.firstCall.args[0]
+        const ctx = spy3.firstCall.args[0]
 
         expect(ctx.title).toBe(pageTitle)
         expect(ctx.params).toEqual({
@@ -461,11 +545,10 @@ describe('Router', () => {
       getNowStub.onCall(3).returns(10)
       router.go('/foo')
 
-      return getMacroTaskResolvedPromise()
-        .then(() => {
+      return getMacroTaskResolvedPromise().then(() => {
           sinon.assert.calledOnce(onRouteCompleteSpy)
           sinon.assert.callOrder(spy1, spy2, onRouteCompleteSpy)
-          var args = onRouteCompleteSpy.firstCall.args[0]
+          const args = onRouteCompleteSpy.firstCall.args[0]
           expect(args.fromPath).toBe('PAGE LOAD')
           expect(args.toPath).toBe('/foo')
           expect(args.duration).toBe(3)
@@ -473,10 +556,11 @@ describe('Router', () => {
 
           router.go('/bar/1/baz/2')
         })
+        .then(() => getMacroTaskResolvedPromise())
         .then(() => {
           sinon.assert.calledTwice(onRouteCompleteSpy)
           sinon.assert.callOrder(spy1, spy2, onRouteCompleteSpy)
-          var args = onRouteCompleteSpy.secondCall.args[0]
+          const args = onRouteCompleteSpy.secondCall.args[0]
           expect(args.fromPath).toBe('/foo')
           expect(args.toPath).toBe('/bar/1/baz/2')
           expect(args.duration).toBe(9)
@@ -500,7 +584,7 @@ describe('Router', () => {
         router.go('/foo')
         return getMacroTaskResolvedPromise().then(() => {
           sinon.assert.calledOnce(onRouteStartSpy)
-          var options = onRouteStartSpy.firstCall.args[0]
+          const options = onRouteStartSpy.firstCall.args[0]
           expect(options.fromPath).toBe('PAGE LOAD')
           expect(options.startTime).toBe(123)
           expect(options.routeMetadata).toEqual({bar: 'baz'})
@@ -517,7 +601,7 @@ describe('Router', () => {
         return getMacroTaskResolvedPromise()
           .then(() => {
             sinon.assert.calledOnce(onRouteStartSpy)
-            var options = onRouteStartSpy.firstCall.args[0]
+            const options = onRouteStartSpy.firstCall.args[0]
             expect(options.fromPath).toBe('PAGE LOAD')
             sinon.assert.calledOnce(redirectSpy1)
             sinon.assert.notCalled(redirectSpy2)

@@ -111,13 +111,14 @@ export default class Router {
   /**
    * Execute a single route, which consists of:
    *   - Updating the url via pushstate/replacestate (if specified)
-   *   - Running the routes handlers
-   *   - Invoking the onstart and oncomplete handlers (if specified)
-   * @param path
-   * @param canonicalPath
-   * @param mode
-   * @param route
-   * @param params
+   *   - Running the route's handlers
+   *   - Invoking the onRouteStart and onRouteComplete handlers (if specified)
+   * @param {String} path
+   * @param {String} canonicalPath
+   * @param {String} mode
+   * @param {Object} routeData
+   * @param {Router} routeData.route
+   * @param {Object} routeData.params
    * @private
    */
   __executeRoute(path, canonicalPath, mode, {route, params}) {
@@ -221,7 +222,7 @@ export default class Router {
     fns.filterMatches(matches)
       .then(
         match => this.__executeRoute(path, canonicalPath, mode, match),
-        this.catchall
+        () => this.catchall()
       )
   }
 
