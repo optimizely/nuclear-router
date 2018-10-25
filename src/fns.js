@@ -84,24 +84,17 @@ function matchRoute(routes, path) {
  * @returns {Promise}
  */
 function filterMatches(routes) {
-  return new Promise((res, rej) => {
-    if (routes.length === 0) {
-      rej('No routes match');
-    } else {
-      utils.PromiseOrderedFirst(
-        routes.map(r => {
-          if (r.route.shouldHandle) {
-            return r.route.shouldHandle();
-          }
-          // The absence of route.shouldHandle is considered a match.
-          return Promise.resolve();
-        })
-      ).then(
-        ({index}) => res(routes[index]),
-        rej
-      );
-    }
-  });
+  return utils
+    .PromiseOrderedFirst(
+      routes.map(r => {
+        if (r.route.shouldHandle) {
+          return r.route.shouldHandle();
+        }
+        // The absence of route.shouldHandle is considered a match.
+        return Promise.resolve();
+      })
+    )
+    .then(({index}) => routes[index]);
 }
 
 /**
