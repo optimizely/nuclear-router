@@ -16,32 +16,37 @@
  * @param {Function} nextFn
  */
 
-import assign from 'object-assign'
-import Context from './Context'
-import fns from './fns'
-import Route from './Route'
-import WindowEnv from './WindowEnv'
-import HistoryEnv from './HistoryEnv'
-import DocumentEnv from './DocumentEnv'
+import assign from 'object-assign';
+import Context from './Context';
+import fns from './fns';
+import Route from './Route';
+import WindowEnv from './WindowEnv';
+import HistoryEnv from './HistoryEnv';
+import DocumentEnv from './DocumentEnv';
 
 export default class Router {
   constructor(opts) {
+    console.warn('[NUCLEAR ROUTER] CONSTRUCTOR');
     this.opts = opts || {};
 
-    this.opts = assign({
-      pushstate: true,
-      base: '',
-    }, opts)
+    this.opts = assign(
+      {
+        pushstate: true,
+        base: '',
+      },
+      opts
+    );
+
+    this.__onpopstate = this.__onpopstate.bind(this);
 
     this.setInitialState();
 
     this.onRouteStart = this.opts.onRouteStart;
-    this.onRouteComplete = this.opts.onRouteComplete
-
-    WindowEnv.addEventListener('popstate', this.__onpopstate.bind(this))
+    this.onRouteComplete = this.opts.onRouteComplete;
   }
 
   setInitialState() {
+    console.warn('[NUCLEAR ROUTER] setInitialState');
     this.__fromPath = null;
     this.__routes = [];
     this.__currentCanonicalPath = null;
@@ -72,11 +77,15 @@ export default class Router {
    */
   registerRoutes(routes) {
     if (!Array.isArray(routes)) {
-      throw new Error('Router#registerRoutes must be passed an array of Routes')
+      throw new Error('Router#registerRoutes must be passed an array of Routes');
     }
+    console.warn('[NUCLEAR ROUTER] registerRoutes');
+    console.log(this.__onpopstate);
+    WindowEnv.removeEventListener('popstate', this.__onpopstate);
+    WindowEnv.addEventListener('popstate', this.__onpopstate);
     routes.forEach(route => {
       this.__routes.push(new Route(route));
-    })
+    });
   }
 
   /**
@@ -90,23 +99,29 @@ export default class Router {
    * @param {String} canonicalPath
    */
   go(canonicalPath) {
-    this.__dispatch(canonicalPath, 'push')
+    this.__dispatch(canonicalPath, 'push');
   }
 
   /**
    * @param {String} canonicalPath
    */
   replace(canonicalPath) {
-    this.__dispatch(canonicalPath, 'replace')
+    this.__dispatch(canonicalPath, 'replace');
   }
 
   reset() {
+    console.warn('[NUCLEAR ROUTER] reset');
     this.setInitialState();
-    WindowEnv.removeEventListener('popstate', this.__onpopstate)
+    console.log(this.__onpopstate);
+    WindowEnv.removeEventListener('popstate', this.__onpopstate);
+    WindowEnv.removeEventListener('popstate', this.__onpopstate);
+    WindowEnv.removeEventListener('popstate', this.__onpopstate);
   }
 
   catchall() {
-    WindowEnv.navigate(this.__catchallPath)
+    if (this.__catchallPath) {
+      WindowEnv.navigate(this.__catchallPath);
+    }
   }
 
   /**
@@ -116,13 +131,16 @@ export default class Router {
     this.__shouldHandlePopstateEvents = false;
 
     // Execute the function, then re-enable the popstate listener
-    return fn().then((result) => {
-      this.__shouldHandlePopstateEvents = true;
-      return Promise.resolve(result);
-    }, (error) => {
-      this.__shouldHandlePopstateEvents = true;
-      return Promise.reject(error);
-    });
+    return fn().then(
+      result => {
+        this.__shouldHandlePopstateEvents = true;
+        return Promise.resolve(result);
+      },
+      error => {
+        this.__shouldHandlePopstateEvents = true;
+        return Promise.reject(error);
+      }
+    );
   }
 
   /**
@@ -138,16 +156,16 @@ export default class Router {
    * @param {Object} routeData.params
    * @private
    */
-  __executeRoute(path, canonicalPath, mode, {route, params}) {
-    const title = DocumentEnv.getTitle()
-    const ctx = new Context({ canonicalPath, path, title, params, dispatchId: this.__dispatchId })
+  __executeRoute(path, canonicalPath, mode, { route, params }) {
+    const title = DocumentEnv.getTitle();
+    const ctx = new Context({ canonicalPath, path, title, params, dispatchId: this.__dispatchId });
     if (mode === 'replace') {
-      HistoryEnv.replaceState.apply(null, ctx.getHistoryArgs())
+      HistoryEnv.replaceState.apply(null, ctx.getHistoryArgs());
     } else if (mode === 'push') {
-      HistoryEnv.pushState.apply(null, ctx.getHistoryArgs())
+      HistoryEnv.pushState.apply(null, ctx.getHistoryArgs());
     }
 
-    this.__currentCanonicalPath = canonicalPath
+    this.__currentCanonicalPath = canonicalPath;
     const routeMetadata = route.metadata || {};
 
     if (this.onRouteStart && mode !== 'replace') {
@@ -178,9 +196,8 @@ export default class Router {
       }
 
       this.__fromPath = canonicalPath;
-    })
-  };
-
+    });
+  }
 
   /**
    * @param {RouterHandler[]} handlers
@@ -208,7 +225,7 @@ export default class Router {
             if (parallelHandlersComplete === handlerFnOrArray.length) {
               next(); // all grouped parallel handlers complete, so invoke the next top-level handler or handler array
             }
-          }
+          };
           // execute all handlers in parallel group
           handlerFnOrArray.map(handlerFn => handlerFn(ctx, parallelNext));
         } else {
@@ -218,7 +235,7 @@ export default class Router {
           }
         }
       }
-    }
+    };
 
     next();
   }
@@ -233,20 +250,23 @@ export default class Router {
       this.__startTime = fns.getNow();
     }
 
-    let path = fns.extractPath(this.opts.base, canonicalPath)
-    let matches = fns.matchRoute(this.__routes, path)
+    let path = fns.extractPath(this.opts.base, canonicalPath);
+    let matches = fns.matchRoute(this.__routes, path);
 
-    fns.filterMatches(matches)
-      .then(
-        match => this.__executeRoute(path, canonicalPath, mode, match),
-        () => this.catchall()
-      )
+    fns.filterMatches(matches).then(
+      match => this.__executeRoute(path, canonicalPath, mode, match),
+      () => this.catchall()
+    );
   }
 
   __onpopstate(e) {
+    console.warn('[NUCLEAR ROUTER] __onpopstate: ', this.__routes.length);
+    if (!this.__routes.length) {
+      console.warn('Popstate handled but no routes. Bailing...');
+      return;
+    }
     if (e.state && this.__shouldHandlePopstateEvents) {
       this.__dispatch(e.state.path, 'pop');
     }
   }
 }
-

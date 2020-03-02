@@ -1,11 +1,12 @@
 {
   "name": "@optimizely/nuclear-router",
-  "version": "1.4.7",
+  "version": "1.4.7-james-single-spa3",
   "description": "NuclearJS Router",
   "main": "dist/main.js",
   "scripts": {
     "build": "rm -rf dist && babel src --out-dir dist --presets=es2015 --plugins=add-module-exports",
     "test": "karma start karma.conf.js",
+    "watch": "babel src --out-dir dist --presets=es2015 --plugins=add-module-exports --watch",
     "watchtest": "karma start karma.conf.js --autoWatch=true --single-run=false",
     "release": "release-it --no-npm.publish"
   },
