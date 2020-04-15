@@ -25,28 +25,77 @@ describe('Router', () => {
     sinon.stub(HistoryEnv, 'pushState')
     sinon.stub(HistoryEnv, 'replaceState')
     sinon.stub(DocumentEnv, 'getTitle').returns(pageTitle)
+    sinon.stub(WindowEnv, 'addEventListener')
+    sinon.stub(WindowEnv, 'removeEventListener')
   })
 
   afterEach(() => {
     HistoryEnv.pushState.restore()
     HistoryEnv.replaceState.restore()
     DocumentEnv.getTitle.restore()
+    WindowEnv.addEventListener.restore()
+    WindowEnv.removeEventListener.restore()
   })
 
   describe('construction', () => {
-    beforeEach(() => {
-      sinon.stub(WindowEnv, 'addEventListener')
-    })
-
-    afterEach(() => {
-      WindowEnv.addEventListener.restore()
-    })
-
     it('should create a Router instance', () => {
       let router = new Router
       expect(router instanceof Router).toBe(true)
     })
   })
+
+  describe('initialization and reset', function() {
+    let emptyRouter;
+    beforeEach(function() {
+      emptyRouter = new Router({});
+    });
+
+    context('initialize', function() {
+      it('should not define state before initialization', function() {
+        expect(emptyRouter.__fromPath).toBe(undefined);
+        expect(emptyRouter.__routes).toBe(undefined);
+        expect(emptyRouter.__currentCanonicalPath).toBe(undefined);
+        sinon.assert.notCalled(WindowEnv.addEventListener);
+      });
+
+      it('should set initial state and add popstate listener upon initialization', function() {
+        emptyRouter.initialize();
+        expect(emptyRouter.__fromPath).toBe(null);
+        expect(emptyRouter.__routes.length).toBe(0);
+        expect(emptyRouter.__currentCanonicalPath).toBe(null);
+        sinon.assert.calledOnce(WindowEnv.addEventListener);
+        sinon.assert.calledWith(WindowEnv.addEventListener, 'popstate');
+      });
+    })
+
+    context('reset', function() {
+      beforeEach(function() {
+        emptyRouter.initialize();
+        emptyRouter.registerRoutes([
+          {
+            match: '/the_route',
+            handle: [
+              (ctx, next) => {
+                next()
+              },
+            ],
+          },
+        ]);
+        emptyRouter.go('/the_route');
+        return getMacroTaskResolvedPromise();
+      })
+      it('should reset initial state and remove popstate listener', function() {
+        expect(emptyRouter.__routes.length).toBe(1);
+        sinon.assert.notCalled(WindowEnv.removeEventListener);
+        emptyRouter.reset();
+        expect(emptyRouter.__fromPath).toBe(null);
+        expect(emptyRouter.__routes.length).toBe(0);
+        expect(emptyRouter.__currentCanonicalPath).toBe(null);
+        sinon.assert.calledOnce(WindowEnv.removeEventListener);
+        sinon.assert.calledWith(WindowEnv.removeEventListener, 'popstate');
+      });
+    })
+  });
 
   describe('navigation', () => {
     let router
@@ -65,6 +114,7 @@ describe('Router', () => {
         },
         onRouteStart: onRouteStartSpy,
       })
+      router.initialize();
 
       spy1 = sinon.spy()
       spy2 = sinon.spy()
@@ -195,6 +245,16 @@ describe('Router', () => {
           .then(() => {
             sinon.assert.calledOnce(WindowEnv.navigate);
             sinon.assert.calledWithExactly(WindowEnv.navigate, '/404');
+          })
+      });
+
+      it('should not window navigate if the catchall route is not set', () => {
+        router.__catchallPath = null;
+        router.go('/abcdefg');
+
+        return getMacroTaskResolvedPromise()
+          .then(() => {
+            sinon.assert.notCalled(WindowEnv.navigate);
           })
       });
     });

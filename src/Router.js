@@ -33,12 +33,19 @@ export default class Router {
       base: '',
     }, opts)
 
-    this.setInitialState();
-
     this.onRouteStart = this.opts.onRouteStart;
-    this.onRouteComplete = this.opts.onRouteComplete
+    this.onRouteComplete = this.opts.onRouteComplete;
+    this.__onpopstate = this.__onpopstate.bind(this);
+  }
 
-    WindowEnv.addEventListener('popstate', this.__onpopstate.bind(this))
+  initialize() {
+    this.setInitialState();
+    WindowEnv.addEventListener('popstate', this.__onpopstate);
+  }
+
+  reset() {
+    this.setInitialState();
+    WindowEnv.removeEventListener('popstate', this.__onpopstate);
   }
 
   setInitialState() {
@@ -100,13 +107,10 @@ export default class Router {
     this.__dispatch(canonicalPath, 'replace')
   }
 
-  reset() {
-    this.setInitialState();
-    WindowEnv.removeEventListener('popstate', this.__onpopstate)
-  }
-
   catchall() {
-    WindowEnv.navigate(this.__catchallPath)
+    if (typeof this.__catchallPath === 'string') {
+      WindowEnv.navigate(this.__catchallPath);
+    }
   }
 
   /**
