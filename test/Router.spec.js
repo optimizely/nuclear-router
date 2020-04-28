@@ -174,7 +174,7 @@ describe('Router', () => {
 
             (ctx, next) => {
               asyncPromise.then(() => {
-                asyncSpy1()
+                asyncSpy1(ctx)
                 next()
               })
             },
@@ -631,6 +631,58 @@ describe('Router', () => {
         })
     })
 
+    it('should ignore a popstate event with the same dispatch id', function() {
+      router.go('/foo');
+      router.__onpopstate({ state: { nuclearDispatchId: 1 }});
+
+      return getMacroTaskResolvedPromise().then(() => {
+        sinon.assert.calledOnce(spy1)
+        sinon.assert.calledOnce(spy2)
+        sinon.assert.notCalled(spy3)
+
+        const ctx = spy1.firstCall.args[0]
+
+        expect(ctx.title).toBe(pageTitle)
+        expect(ctx.params).toEqual({})
+        expect(ctx.canonicalPath).toBe('/foo')
+        expect(ctx.path).toBe('/foo')
+      })
+    })
+
+    it('should handle a popstate event with a different dispatchId', function() {
+      router.go('/async');
+
+      return getMacroTaskResolvedPromise()
+        .then(() => {
+          router.__onpopstate({ state: { path: '/foo', nuclearDispatchId: 0 }});
+        })
+        .then(deferred.resolve)
+        .then(getMacroTaskResolvedPromise)
+        .then(() => {
+          sinon.assert.calledOnce(spy1)
+          sinon.assert.calledOnce(spy2)
+          sinon.assert.notCalled(spy3)
+          sinon.assert.calledOnce(asyncSpy0)
+          sinon.assert.calledOnce(asyncSpy1)
+          // The dispatching of /foo prevents the last asyncSpy from being called
+          sinon.assert.notCalled(asyncSpy2)
+
+          const ctx1 = spy1.firstCall.args[0]
+
+          expect(ctx1.title).toBe(pageTitle)
+          expect(ctx1.params).toEqual({})
+          expect(ctx1.canonicalPath).toBe('/foo')
+          expect(ctx1.path).toBe('/foo')
+
+          const ctx2 = asyncSpy1.firstCall.args[0]
+
+          expect(ctx2.title).toBe(pageTitle)
+          expect(ctx2.params).toEqual({})
+          expect(ctx2.canonicalPath).toBe('/async')
+          expect(ctx2.path).toBe('/async')
+        })
+    })
+
     describe('when handling a popstate event', () => {
       let dispatchStub;
       let popstateSpy;
@@ -648,6 +700,18 @@ describe('Router', () => {
           return Promise.resolve();
         })
           .then(() => {
+            // Expect that the popstate handler is called
+            sinon.assert.calledOnce(popstateSpy);
+
+            // Expect that the popstate listener does not trigger a dispatch
+            sinon.assert.notCalled(dispatchStub);
+          });
+      });
+
+      it('should not dispatch a route if the popstate filter fn does not pass', () => {
+        router.__filterPopstateEvent = (e) => !e.extraneous;
+        router.__onpopstate({ state: {}, extraneous: true });
+        return getMacroTaskResolvedPromise().then(() => {
             // Expect that the popstate handler is called
             sinon.assert.calledOnce(popstateSpy);
 

@@ -36,6 +36,7 @@ export default class Router {
     this.onRouteStart = this.opts.onRouteStart;
     this.onRouteComplete = this.opts.onRouteComplete;
     this.__onpopstate = this.__onpopstate.bind(this);
+    this.__filterPopstateEvent = this.opts.filterPopstateEvent || (() => true);
   }
 
   initialize() {
@@ -249,7 +250,11 @@ export default class Router {
 
   __onpopstate(e) {
     if (e.state && this.__shouldHandlePopstateEvents) {
-      this.__dispatch(e.state.path, 'pop');
+      // Make sure this popstate event passes the filter fn and wasn't triggered
+      // as a result of the currently in progress dispatch.
+      if (this.__filterPopstateEvent(e) && e.state.nuclearDispatchId !== this.__dispatchId) {
+        this.__dispatch(e.state.path, 'pop');
+      }
     }
   }
 }
