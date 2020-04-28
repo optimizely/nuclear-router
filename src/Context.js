@@ -28,6 +28,7 @@ export default class Context {
   getHistoryArgs() {
     let state = {
       path: this.canonicalPath,
+      nuclearDispatchId: this.dispatchId,
     }
     let url = this.canonicalPath
 
