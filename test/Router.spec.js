@@ -533,6 +533,34 @@ describe('Router', () => {
       })
     })
 
+    it('should call history.pushState as the default', function() {
+      router.go('/foo')
+
+      return getMacroTaskResolvedPromise().then(() => {
+        sinon.assert.calledOnce(spy1);
+        sinon.assert.calledOnce(HistoryEnv.pushState);
+      })
+    });
+
+    it('should call history.replaceState when the mode `replace` is passed', function() {
+      router.go('/foo', 'replace')
+
+      return getMacroTaskResolvedPromise().then(() => {
+        sinon.assert.calledOnce(spy1);
+        sinon.assert.calledOnce(HistoryEnv.replaceState);
+      })
+    });
+
+    it('should not call history.<push|replace>State when the mode `pop` is passed', function() {
+      router.go('/foo', 'pop')
+
+      return getMacroTaskResolvedPromise().then(() => {
+        sinon.assert.calledOnce(spy1);
+        sinon.assert.notCalled(HistoryEnv.pushState);
+        sinon.assert.notCalled(HistoryEnv.replaceState);
+      })
+    });
+
     it('should properly parse params', () => {
       router.go('/bar/123/baz?account_id=4')
 

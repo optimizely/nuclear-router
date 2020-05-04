@@ -16,6 +16,10 @@
  * @param {Function} nextFn
  */
 
+ /**
+  * @typedef {"push" | "replace" | "pop"} Mode
+  */
+
 import assign from 'object-assign'
 import Context from './Context'
 import fns from './fns'
@@ -96,9 +100,10 @@ export default class Router {
 
   /**
    * @param {String} canonicalPath
+   * @param {Mode} mode
    */
-  go(canonicalPath) {
-    this.__dispatch(canonicalPath, 'push')
+  go(canonicalPath, mode = 'push') {
+    this.__dispatch(canonicalPath, mode)
   }
 
   /**
@@ -137,7 +142,7 @@ export default class Router {
    *   - Invoking the onRouteStart and onRouteComplete handlers (if specified)
    * @param {String} path
    * @param {String} canonicalPath
-   * @param {String} mode
+   * @param {Mode} mode
    * @param {Object} routeData
    * @param {Router} routeData.route
    * @param {Object} routeData.params
@@ -230,7 +235,7 @@ export default class Router {
 
   /**
    * @param {String} canonicalPath
-   * @param {String} mode One of 'pop', 'push', 'replace'
+   * @param {Mode} mode
    */
   __dispatch(canonicalPath, mode = 'push') {
     this.__dispatchId++;
