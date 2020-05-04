@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.2.0] - May 4th, 2020
+
+- feat (Go): Support passing the mode to router.go (See #20)
+
+## [2.1.0] - April 28th, 2020
+
+- feat (popstate): Support higher fidelity popstate event handling (See #19)
+
 ### Breaking Changes
 
 - Require explicit initialization via `initialize` before using. (See #17)
