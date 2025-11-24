@@ -36,8 +36,10 @@ function extractQueryParams(path) {
  * @return {String}
  */
 function extractPath(base, canonicalPath) {
-  let path = (canonicalPath ? canonicalPath.replace(base, '') : null) || '/'
-  let qsIndex = path.indexOf('?')
+  console.log('[EHS-50]: extractPath called with base:', base, 'and canonicalPath:', canonicalPath);
+  let path = (canonicalPath ? canonicalPath.replace(base, '') : null) || '/';
+  console.log('[EHS-50]: path after base removal:', path);
+  let qsIndex = path.indexOf('?');
   return (qsIndex > -1) ? path.slice(0, qsIndex) : path
 }
 
