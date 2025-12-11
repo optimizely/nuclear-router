@@ -36,8 +36,13 @@ function extractQueryParams(path) {
  * @return {String}
  */
 function extractPath(base, canonicalPath) {
-  let path = canonicalPath?.replace(base, '') || '/'
-  let qsIndex = path.indexOf('?')
+  let path = '/';
+
+  if (canonicalPath != null && typeof canonicalPath === 'string') {
+    path = canonicalPath.replace(base, '') || '/';
+  }
+
+  let qsIndex = path.indexOf('?');
   return (qsIndex > -1) ? path.slice(0, qsIndex) : path
 }
 

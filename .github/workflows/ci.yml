@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 8.x
+      - run: yarn install
+      - run: yarn build
+
+  publish:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 8.x
+      - run: npm config set registry ${{ secrets.NPM_REGISTRY_URL }}
+      - run: yarn install
+      - name: Set version
+        if: github.event_name == 'workflow_dispatch'
+        run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+      - run: yarn build
+      - run: yarn publish --non-interactive
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
