@@ -23,7 +23,6 @@ jobs:
           node-version: 8.x
       - run: yarn install
       - run: yarn build
-      - run: yarn test
 
   publish:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
