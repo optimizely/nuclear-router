@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 8.x
-      - run: npm config set registry ${{ secrets.NPM_REGISTRY_URL }}
+          registry-url: ${{ secrets.NPM_REGISTRY_URL }}
       - run: yarn install
       - name: Set version
         if: github.event_name == 'workflow_dispatch'
