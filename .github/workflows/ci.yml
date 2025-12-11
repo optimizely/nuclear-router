@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline for building and publishing package
 
 on:
   push:
