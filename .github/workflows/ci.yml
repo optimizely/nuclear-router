@@ -1,3 +1,4 @@
+## Draft pipeline, need to fix the NPM_TOKEN and NPM_REGISTRY_URL secrets in the repo settings.
 name: CI
 
 on:
